@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Object from file app</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -31,7 +31,7 @@
        <item>
         <widget class="QLabel" name="read_label">
          <property name="text">
-          <string> </string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -96,7 +96,7 @@
        <item>
         <widget class="QLabel" name="group_label">
          <property name="text">
-          <string> </string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -282,6 +282,7 @@
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -292,7 +293,6 @@
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
  <connections/>

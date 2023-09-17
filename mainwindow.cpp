@@ -9,7 +9,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    QString type_mass[]{" ", "Человек", "Машина", "Здание", "Дерево"};
+
+    QString type_mass[]{" ", "Человек", "Машина", "Здание", "Дерево"};      //filling in the lists
     QString group_by_mass[]{" ", "По расстоянию", "По имени", "По времени создания", "По типу"};
 
     for(QString type : type_mass)
@@ -25,37 +26,15 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// GUI operation block
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void MainWindow::on_read_button_clicked(){
-    file_path = QFileDialog::getOpenFileName(this, "Выбрать файл", "C:\\", "TXT (*.txt);");
+    file_path = QFileDialog::getOpenFileName(this, "Выбрать файл", "C:\\", "TXT (*.txt);");     //dialog box for selecting a file
     //file_path = "C:/Users/";
     read_file();
 }
-
-void MainWindow::read_file() {
-    QString from_file = "";
-
-    QFile File(file_path);
-    if (File.open(QIODevice::ReadOnly)) {
-        QTextStream stream(&File);
-        file_objects.clear();
-        while (!stream.atEnd()) {
-            Object_from_file temp_object;
-            if (!temp_object.set_object_from_line(stream.readLine())) {
-                file_objects.push_back(temp_object);
-                from_file += temp_object.get_name() + " " +
-                        QString::number(temp_object.get_x_pos(),'f',3) + " " +
-                        QString::number(temp_object.get_y_pos(),'f',3) + " " +
-                        temp_object.get_type() + " " +
-                        QString::number(temp_object.get_create_time(),'f',3) + "\n";
-            }
-        }
-        ui->textEdit->setText(from_file);
-    }
-
-    File.close();
-}
-
 
 void MainWindow::on_add_button_clicked() {
     QString s_name = ui->name_edit->text();
@@ -64,7 +43,7 @@ void MainWindow::on_add_button_clicked() {
     QString s_type = ui->obj_type_box->currentText();
 
     if (s_name.size() < 1) {
-        ui->label_name->setText("Name (ERROR)");
+        ui->label_name->setText("Name (ERROR)");            //checking the filling to add a new element
         return;
     }
     else ui->label_name->setText("Name");
@@ -94,26 +73,28 @@ void MainWindow::on_add_button_clicked() {
     }
     else ui->read_label->setText(" ");
 
-    QString time = QString::number((QDateTime::currentMSecsSinceEpoch()/1000.0), 'f', 3);
+    QString time = QString::number((QDateTime::currentMSecsSinceEpoch()/1000.0), 'f', 3);       //we find out the time in MSecs and divide by 1000 to get Secs with a remainder in MSecs
     //qDebug() << time;
 
-    QString data = s_name + " " + s_x + " " + s_y + " " + s_type + " " + time + "\n";
+    QString data = s_name + " " + s_x + " " + s_y + " " + s_type + " " + time + "\n";       //previously, this line was used for output to TextEdit,
+                                                                                            //but it was decided to leave it so as not to prescribe code
+                                                                                            //for creating an element by separate parameters
 
     Object_from_file temp_obj;
     temp_obj.set_object_from_line(data);
     file_objects.push_back(temp_obj);
     QString output = "";
     for(int a = 0; a < file_objects.size(); ++a) {
-        output += file_objects[a].get_name() + " " +
+        output += file_objects[a].get_name() + " " +                                    //we enter the current result in the line
                 QString::number(file_objects[a].get_x_pos(),'f',3) + " " +
                 QString::number(file_objects[a].get_y_pos(),'f',3) + " " +
                 file_objects[a].get_type() + " " +
                 QString::number(file_objects[a].get_create_time(),'f',3) + "\n";
     }
-    ui->textEdit->setText(output);
+    ui->textEdit->setText(output);                                                      //output a string in TextEdit
     QTextCursor cursor = ui->textEdit->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    ui->textEdit->setTextCursor(cursor);
+    cursor.movePosition(QTextCursor::End);                                              //move the cursor down to see the newly added element.
+    ui->textEdit->setTextCursor(cursor);                                                //Just because it's more convenient and more beautiful
 
 }
 
@@ -125,17 +106,54 @@ void MainWindow::on_group_button_clicked() {
         return;
     } else ui->group_label->setText(" ");
 
-    int mass_size = file_objects.size();
-
-    int number_mass[mass_size];
-    for(int a = 0; a < mass_size; ++a)
-        number_mass[a] = a;
-
     if (ui->group_by_type_box->currentText() == "По расстоянию") ui->textEdit->setText(group_by_distance(file_objects));
     else if (ui->group_by_type_box->currentText() == "По имени") ui->textEdit->setText(group_by_name(file_objects));
     else if (ui->group_by_type_box->currentText() == "По времени создания") ui->textEdit->setText(group_by_create_time(file_objects));
     else if (ui->group_by_type_box->currentText() == "По типу") ui->textEdit->setText(group_by_type(file_objects));
+}
 
+void MainWindow::on_save_button_clicked() {
+    QString data = ui->textEdit->toPlainText();                                         //the terms of reference did not specify what exactly needs to be saved,
+                                                                                        //so I decided to shorten the code and do it in a simple way
+
+    QFile File(file_path);
+    if (File.open(QIODevice::Truncate | QIODevice::ReadWrite)) {
+        QTextStream stream(&File);
+        stream << data;
+    }
+    File.close();
+    read_file();
+
+    ui->read_label->setText("Saved");
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// functions of the first wave
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void MainWindow::read_file() {
+    QString from_file = "";
+
+    QFile File(file_path);
+    if (File.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&File);
+        file_objects.clear();
+        while (!stream.atEnd()) {
+            Object_from_file temp_object;
+            if (!temp_object.set_object_from_line(stream.readLine())) {             //initialize new objects using strings.
+                                                                                    //If initialization is successful, the function will return 0
+                                                                                    //Adding objects to a string for output in TextEdit
+                file_objects.push_back(temp_object);
+                from_file += temp_object.get_name() + " " +
+                        QString::number(temp_object.get_x_pos(),'f',3) + " " +
+                        QString::number(temp_object.get_y_pos(),'f',3) + " " +
+                        temp_object.get_type() + " " +
+                        QString::number(temp_object.get_create_time(),'f',3) + "\n";
+            }
+        }
+        ui->textEdit->setText(from_file);
+    }
+    File.close();
 }
 
 QString MainWindow::group_by_distance(QVector<Object_from_file>& object_vec) {
@@ -144,10 +162,15 @@ QString MainWindow::group_by_distance(QVector<Object_from_file>& object_vec) {
     double dist_mass[obj_size];
 
     for (int a = 0; a < object_vec.size(); ++a) {
-        dist_mass[a] = sqrt(object_vec[a].get_x_pos()*object_vec[a].get_x_pos() + object_vec[a].get_y_pos() * object_vec[a].get_y_pos());
+        dist_mass[a] = sqrt(object_vec[a].get_x_pos()*object_vec[a].get_x_pos() +
+                            object_vec[a].get_y_pos() * object_vec[a].get_y_pos());     //find the hypotenuse to determine the distance to the object
         num_mass[a] = a;
     }
-
+                                                                                        //passing the vector of objects entailed too many problems,
+                                                                                        //so I created a couple of separate arrays in each grouping function:
+                                                                                        //data for sorting and numbers in order to know how the new list should be located relative to the old one
+                                                                                        //and based on this, arrange a full-fledged set of objects
+                                                                                        //crutches? Maybe, but it's fast and intuitive, it seems to me
     obj_sort(dist_mass, num_mass, obj_size);
 
     QString output = "";
@@ -155,11 +178,11 @@ QString MainWindow::group_by_distance(QVector<Object_from_file>& object_vec) {
     bool far_flag[flag_mass_size] = {false};
     int far_numbers[flag_mass_size] = {0, 100, 1000, 10000};
     QString far_messages[flag_mass_size] = {"До 100 единиц\n", "До 1000 единиц\n", "До 10000 единиц\n", "Слишком далеко\n"};
-
+                                                                                        //I really didn't want to write a separate "if" and "for" for each group
     int a = 0;
     for(int b = 0; b < flag_mass_size; ++b) {
         for (a; a < obj_size; ++a) {
-            if (((b < (flag_mass_size - 1)) ? (dist_mass[a] > far_numbers[b] && dist_mass[a] < far_numbers[b + 1])
+            if (((b < (flag_mass_size - 1)) ? (dist_mass[a] > far_numbers[b] && dist_mass[a] < far_numbers[b + 1])     //verification within verification. I'm trying this for the first time
                         :  (dist_mass[a] > far_numbers[b]))) {
                 if (!far_flag[b]) {
                     output += far_messages[b];
@@ -183,7 +206,7 @@ QString MainWindow::group_by_name(QVector<Object_from_file>& object_vec) {
     int num_mass[obj_size];
 
     for (int a = 0; a < obj_size; ++a) {
-        name_mass[a] = object_vec[a].get_name().toUpper();
+        name_mass[a] = object_vec[a].get_name().toUpper();              //we use the ToUpper() function so that lowercase letters are not separated from uppercase ones
         num_mass[a] = a;
     }
     obj_sort(name_mass, num_mass, obj_size);
@@ -201,7 +224,9 @@ QString MainWindow::group_by_name(QVector<Object_from_file>& object_vec) {
             not_A_flag = true;
         }
         else if (name[0].toUpper() != object_vec[num_mass[a - 1]].get_name()[0].toUpper() && A_flag)
-            output += "Буква " + (QString)name[0].toUpper() + "\n";
+            output += "Буква " + (QString)name[0].toUpper() + "\n";                 //initially I tried to use the alphabet for grouping,
+                                                                                    //but then it turned out that Qt practically does not know how to work with the Russian test
+                                                                                    //and I had to adapt
 
         output += object_vec[num_mass[a]].get_name() + " " +
             QString::number(object_vec[num_mass[a]].get_x_pos(),'f',3) + " " +
@@ -239,7 +264,8 @@ QString MainWindow::group_by_create_time(QVector<Object_from_file>& object_vec) 
     double current_time = QDateTime::currentDateTime().currentSecsSinceEpoch();
 
     int a =  obj_size - 1;
-    for(int b = 0; b < flag_mass_size; ++b) {
+    for(int b = 0; b < flag_mass_size; ++b) {               //it took a very long time to understand that "more" for time data is "less"
+                                                            //and to work, you need to expand the array in the opposite direction, relative to past functions
 
         for (a; a >= 0; --a) {
             double difference_time = (current_time - create_time_mass[a]);
@@ -261,7 +287,10 @@ QString MainWindow::group_by_create_time(QVector<Object_from_file>& object_vec) 
     return output;
 }
 
-QString MainWindow::group_by_type(QVector<Object_from_file>& object_vec) {
+QString MainWindow::group_by_type(QVector<Object_from_file>& object_vec) {          //the last function that I was finishing by 4 o'clock in the morning,
+                                                                                    //I wanted to sleep, I couldn't think,
+                                                                                    //but it turned out, not bad, this is the best option that I came up with
+                                                                                    //and, most importantly, IT WORKS HAHAHAHAHAHA, although there is a place to grow
     const int obj_size = object_vec.size();
     QString type_mass[obj_size];
     int num_mass[obj_size];
@@ -348,7 +377,14 @@ QString MainWindow::group_by_type(QVector<Object_from_file>& object_vec) {
     return output;
 }
 
-template <class X> void MainWindow::obj_sort(X* items, int* num_vec, int size) {
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// functions of the second wave
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <class X> void MainWindow::obj_sort(X* items, int* num_vec, int size) {            //I would say that I made such a function so as not to repeat one line several times,
+                                                                                            //but, in fact, I just had QuickSort written in this form for a long time
+                                                                                            //and I just copied and modified it for current needs
     obj_sort(items, num_vec, 0, size - 1);
 }
 
@@ -378,18 +414,3 @@ template <class X> void MainWindow::obj_sort(X* items, int* num_vec, int left, i
     if (i < right) obj_sort(items, num_vec, i, right);
 
 }
-
-void MainWindow::on_save_button_clicked() {
-    QString data = ui->textEdit->toPlainText();
-
-    QFile File(file_path);
-    if (File.open(QIODevice::Truncate | QIODevice::ReadWrite)) {
-        QTextStream stream(&File);
-        stream << data;
-    }
-    File.close();
-    read_file();
-
-    ui->read_label->setText("Saved");
-}
-
