@@ -16,8 +16,14 @@ set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
         object_from_file.cpp
+        group_and_sort.cpp
+        processes_pool.cpp
+        thread_class.cpp
         mainwindow.h
         object_from_file.h
+        group_and_sort.h
+        processes_pool.h
+        thread_class.h
         mainwindow.ui
 )
 

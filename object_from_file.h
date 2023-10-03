@@ -15,6 +15,7 @@ public:
     double get_y_pos();
     QString get_type();
     double get_create_time();
+    QString get_output();
 private:
     QString name = "";
     double x_pos;

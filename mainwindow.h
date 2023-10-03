@@ -8,7 +8,10 @@
 #include <QString>
 #include <QTextStream>
 #include <QFileDialog>
+
 #include "object_from_file.h"
+#include "group_and_sort.h"
+#include "thread_class.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -22,6 +25,12 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    friend Group;
+
+    template <class X> friend void obj_sort(X* items, int* num_vec, int size);
+
+    template <class X> friend void obj_sort(X* items, int* num_vec, int left, int right);
+
 private slots:
     void on_read_button_clicked();
 
@@ -34,22 +43,11 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
-    QVector<Object_from_file> file_objects;
+    Thread_class *thread;
 
-    QString group_by_distance(QVector<Object_from_file>& object_vec);
+    QVector<Object_from_file>* file_objects = new QVector<Object_from_file>;
 
-    QString group_by_name(QVector<Object_from_file>& object_vec);
-
-    QString group_by_create_time(QVector<Object_from_file>& object_vec);
-
-    QString group_by_type(QVector<Object_from_file>& object_vec);
-
-    //Object_from_file* file_objects;
-
-    void read_file();
-
-    template <class X> void obj_sort(X* items, int* num_vec, int size);
-
-    template <class X> void obj_sort(X* items, int* num_vec, int left, int right);
+signals:
+    void output(QString);
 };
 #endif // MAINWINDOW_H

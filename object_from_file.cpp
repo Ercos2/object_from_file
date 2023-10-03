@@ -44,3 +44,11 @@ QString Object_from_file::get_type() {
 double Object_from_file::get_create_time() {
     return create_time;
 }
+
+QString Object_from_file::get_output() {
+    return name + " " +                                    //we enter the current result in the line
+            QString::number(x_pos,'f',3) + " " +
+            QString::number(y_pos,'f',3) + " " +
+            type + " " +
+            QString::number(create_time,'f',3) + "\n";
+}
