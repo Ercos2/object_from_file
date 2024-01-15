@@ -29,23 +29,23 @@ bool Object_from_file::set_object_from_line(QString line) {
     }
 }
 
-QString Object_from_file::get_name() {
+QString Object_from_file::get_name() const {
     return name;
 }
-double Object_from_file::get_x_pos() {
+double Object_from_file::get_x_pos() const {
     return x_pos;
 }
-double Object_from_file::get_y_pos() {
+double Object_from_file::get_y_pos() const {
     return y_pos;
 }
-QString Object_from_file::get_type() {
+QString Object_from_file::get_type() const {
     return type;
 }
-double Object_from_file::get_create_time() {
+double Object_from_file::get_create_time() const {
     return create_time;
 }
 
-QString Object_from_file::get_output() {
+QString Object_from_file::get_output() const {
     return name + " " +                                    //we enter the current result in the line
             QString::number(x_pos,'f',3) + " " +
             QString::number(y_pos,'f',3) + " " +

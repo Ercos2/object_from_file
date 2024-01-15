@@ -26,4 +26,6 @@ template <class X> void obj_sort(std::shared_ptr<X> items, std::shared_ptr<int[]
 
 template <class X> void obj_sort(std::shared_ptr<X> items, std::shared_ptr<int[]> num_vec, int left, int right);
 
+bool revers_comparator (const Object_from_file &item1, const Object_from_file &item2);
+
 #endif // GROUP_AND_SORT_H

@@ -1,10 +1,32 @@
 #include "group_and_sort.h"
+//#include <algorithm>
 
 Group::Group(QObject *parent) : QObject(parent) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// group-operation block
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+bool comparator_by_distance (const Object_from_file &item1, const Object_from_file &item2) {
+    return ((item1.get_x_pos() * item1.get_y_pos()) > (item2.get_x_pos() * item2.get_y_pos()));
+}
+
+bool comparator_by_name (const Object_from_file &item1, const Object_from_file &item2) {
+    return (item1.get_name() > item2.get_name());
+}
+
+
+bool reverse_comparator_by_create_time (const Object_from_file &item1, const Object_from_file &item2) {
+    return (item1.get_create_time() < item2.get_create_time());
+}
+
+bool comparator_by_type (const Object_from_file &item1, const Object_from_file &item2) {
+    if (item1.get_type() == item2.get_type())
+        return (item1.get_name() > item2.get_name());
+    else
+        return (item1.get_type() > item2.get_type());
+}
+*/
 
 QString Group::group_by_distance(QVector<Object_from_file>& object_vec) {
     const int obj_size = object_vec.size();
@@ -90,48 +112,53 @@ QString Group::group_by_name(QVector<Object_from_file>& object_vec) {
 }
 
 QString Group::group_by_create_time(QVector<Object_from_file>& object_vec) {
-    const int obj_size = object_vec.size();
-    std::shared_ptr<double[]> create_time_mass(new double[obj_size], [] (double *i) {delete[] i;});
-    std::shared_ptr<int[]> num_mass(new int[obj_size], [] (int *i) {delete[] i;});
 
-    for (int a = 0; a < obj_size; ++a) {
-        create_time_mass[a] = object_vec[a].get_create_time();
-        num_mass[a] = a;
-    }
-
-    obj_sort(create_time_mass, num_mass, obj_size);
+    auto temp_vec = std::make_shared<QVector<Object_from_file>>(object_vec);
+    // use std::sort and custom reverse comporatare for result
+    std::sort((*temp_vec).begin(), (*temp_vec).end(),
+              [] (const Object_from_file &item1, const Object_from_file &item2) {
+        return (item1.get_create_time() > item2.get_create_time());
+    });
 
     auto output = std::make_unique<QString>("");
     const int flag_mass_size = 6;
-    auto time_flag = std::unique_ptr<bool[]>(new bool[flag_mass_size]{false});
-    auto time_messages = std::unique_ptr<QString[]>(new QString[flag_mass_size]{"Сегодня\n", "Вчера\n", "На этой неделе\n", "В этом месяце\n", "В этом году\n", "Ранее\n"});
-    auto time_mass = std::unique_ptr<double[]>(new double[flag_mass_size]);
+    auto time_flag = std::make_unique<QVector<bool>>(flag_mass_size, false);
+    auto time_messages = std::make_unique<QVector<QString>>();
+    (*time_messages) = {"Сегодня\n", "Вчера\n", "На этой неделе\n", "В этом месяце\n", "В этом году\n", "Ранее\n"};
+    auto time_mass = std::make_unique<std::vector<double>>();
 
-    time_mass[0] = 0;
-    time_mass[1] = (QDateTime::currentDateTime().time().hour() * 60 * 60) + (QDateTime::currentDateTime().time().minute() * 60); //today
-    time_mass[2] = time_mass[0] + 24 * 60 * 60; //yesterday
-    time_mass[3] = (QDateTime::currentDateTime().date().dayOfWeek() - 1) * 24 * 60 * 60; // this week
-    time_mass[4] = (QDateTime::currentDateTime().date().day() - 1) * 24 * 60 * 60; // this month
-    time_mass[5] = (QDateTime::currentDateTime().date().dayOfYear() - 1) * 24 * 60 * 60; // this year
+    time_mass->push_back(0);
+    time_mass->push_back((QDateTime::currentDateTime().time().hour() * 60 * 60) + (QDateTime::currentDateTime().time().minute() * 60)); //today
+    time_mass->push_back((*time_mass)[0] + 24 * 60 * 60); //yeasterday
+    time_mass->push_back((QDateTime::currentDateTime().date().dayOfWeek() - 1) * 24 * 60 * 60); //this week
+    time_mass->push_back((QDateTime::currentDateTime().date().day() - 1) * 24 * 60 * 60); // this month
+    time_mass->push_back((QDateTime::currentDateTime().date().dayOfYear() - 1) * 24 * 60 * 60); // this year
+
     double current_time = QDateTime::currentDateTime().currentSecsSinceEpoch();
 
-    int a =  obj_size - 1;
-    for(int b = 0; b < flag_mass_size; ++b) {               //it took a very long time to understand that "more" for time data is "less"
-                                                            //and to work, you need to expand the array in the opposite direction, relative to past functions
-
-        for (a; a >= 0; --a) {
-            double difference_time = (current_time - create_time_mass[a]);
-            if (((b < (flag_mass_size - 1)) ? (difference_time > time_mass[b] && difference_time < time_mass[b + 1])
-                                    :  (difference_time > time_mass[b]))) {
-                if (!time_flag[b]) {
-                    *output += time_messages[b];
-                    time_flag[b] = true;
+    int last_iter = 0;
+    //the outer loop runs through the array objects, while the inner loop runs through possible groups
+    for(auto &temp_obj : (*temp_vec)) {
+        //the array of objects is sorted in advance,
+        //so it makes no sense to check all the groups over and over again,
+        //so we keep the last correct one and act on it as "last_iter"
+        for (last_iter; last_iter < flag_mass_size; ++last_iter) {
+            double difference_time = (current_time - temp_obj.get_create_time());
+            if (((last_iter < (flag_mass_size - 1)) ? (difference_time > (*time_mass)[last_iter] && difference_time < (*time_mass)[last_iter + 1])
+                                            :  (difference_time > (*time_mass)[last_iter]))) {
+                if (!(*time_flag)[last_iter]) {
+                    *output += (*time_messages)[last_iter];
+                    (*time_flag)[last_iter] = true;
                 }
-                *output += object_vec[num_mass[a]].get_output();
+                *output += temp_obj.get_output();
+                //If an element belongs to one group,
+                //then there is no point in checking it for belonging to others,
+                //so we interrupt the cycle
+                break;
             }
-            else break;
         }
     }
+
     return *output;
 }
 
