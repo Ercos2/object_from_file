@@ -1,68 +1,45 @@
 #include "group_and_sort.h"
-//#include <algorithm>
+
+std::mutex obj_lock;
 
 Group::Group(QObject *parent) : QObject(parent) {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// group-operation block
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-bool comparator_by_distance (const Object_from_file &item1, const Object_from_file &item2) {
-    return ((item1.get_x_pos() * item1.get_y_pos()) > (item2.get_x_pos() * item2.get_y_pos()));
-}
-
-bool comparator_by_name (const Object_from_file &item1, const Object_from_file &item2) {
-    return (item1.get_name() > item2.get_name());
-}
-
-
-bool reverse_comparator_by_create_time (const Object_from_file &item1, const Object_from_file &item2) {
-    return (item1.get_create_time() < item2.get_create_time());
-}
-
-bool comparator_by_type (const Object_from_file &item1, const Object_from_file &item2) {
-    if (item1.get_type() == item2.get_type())
-        return (item1.get_name() > item2.get_name());
-    else
-        return (item1.get_type() > item2.get_type());
-}
-*/
 
 QString Group::group_by_distance(QVector<Object_from_file>& object_vec) {
-    const int obj_size = object_vec.size();
-    //I heard that std::shared_ptr has problems with standard memory cleanup when creating an array
-    //and I used the lambda function that was offered there
-    std::shared_ptr<int[]> num_mass(new int[obj_size], [] (int *i) {delete[] i;});
-    std::shared_ptr<double[]> dist_mass(new double[obj_size], [] (double *i) {delete[] i;});
-
-    for (int a = 0; a < object_vec.size(); ++a) {
-        dist_mass[a] = sqrt(object_vec[a].get_x_pos()*object_vec[a].get_x_pos() +
-                            object_vec[a].get_y_pos() * object_vec[a].get_y_pos());     //find the hypotenuse to determine the distance to the object
-        num_mass[a] = a;
-    }
-                                                                                        //passing the vector of objects entailed too many problems,
-                                                                                        //so I created a couple of separate arrays in each grouping function:
-                                                                                        //data for sorting and numbers in order to know how the new list should be located relative to the old one
-                                                                                        //and based on this, arrange a full-fledged set of objects
-                                                                                        //crutches? Maybe, but it's fast and intuitive, it seems to me
-    obj_sort(dist_mass, num_mass, obj_size);
+    obj_lock.lock();
+    auto temp_vec = std::make_shared<QVector<Object_from_file>>(object_vec);
+    obj_lock.unlock();
+    // use std::sort and custom reverse comporatare for result
+    std::sort((*temp_vec).begin(), (*temp_vec).end(),
+              [] (const Object_from_file &item1, const Object_from_file &item2) {
+        return (sqrt(item1.get_x_pos() * item1.get_x_pos() + item1.get_y_pos() * item1.get_y_pos()) <
+                            sqrt(item2.get_x_pos() * item2.get_x_pos() + item2.get_y_pos() * item2.get_y_pos()));
+              });
 
     auto output = std::make_unique<QString>("");
     const int flag_mass_size = 4;
-    auto far_flag = std::unique_ptr<bool[]>(new bool[flag_mass_size]{false});
-    auto far_numbers = std::unique_ptr<int[]>(new int[flag_mass_size]{0, 100, 1000, 10000});
-    auto far_messages = std::unique_ptr<QString[]>(new QString[flag_mass_size]{"До 100 единиц\n", "До 1000 единиц\n", "До 10000 единиц\n", "Слишком далеко\n"});
-                                                                                        //I really didn't want to write a separate "if" and "for" for each group
+
+    auto far_flag = std::make_unique<QVector<bool>>(flag_mass_size, false);
+    auto far_numbers = std::make_unique<QVector<int>>();
+    (*far_numbers) = {0, 100, 1000, 10000};
+    auto far_messages = std::make_unique<std::vector<QString>>();
+    (*far_messages) = {"До 100 единиц\n", "До 1000 единиц\n", "До 10000 единиц\n", "Слишком далеко\n"};
+
     int a = 0;
     for(int b = 0; b < flag_mass_size; ++b) {
-        for (a; a < obj_size; ++a) {
-            if (((b < (flag_mass_size - 1)) ? (dist_mass[a] > far_numbers[b] && dist_mass[a] < far_numbers[b + 1])     //verification within verification. I'm trying this for the first time
-                        :  (dist_mass[a] > far_numbers[b]))) {
-                if (!far_flag[b]) {
-                    *output += far_messages[b];
-                    far_flag[b] = true;
+        for (a; a < temp_vec->size(); ++a) {
+            auto dist = sqrt((*temp_vec)[a].get_x_pos() * (*temp_vec)[a].get_x_pos() +
+                             (*temp_vec)[a].get_y_pos() * (*temp_vec)[a].get_y_pos());
+            if (((b < (flag_mass_size - 1)) ? (dist > (*far_numbers)[b] && dist < (*far_numbers)[b + 1])     //verification within verification. I'm trying this for the first time
+                                            :  (dist > (*far_numbers)[b]))) {
+                if (!(*far_flag)[b]) {
+                    *output += (*far_messages)[b];
+                    (*far_flag)[b] = true;
                 }
-                *output += object_vec[num_mass[a]].get_output();
+                *output += (*temp_vec)[a].get_output();
             }
             else break;
         }
@@ -72,48 +49,41 @@ QString Group::group_by_distance(QVector<Object_from_file>& object_vec) {
 }
 
 QString Group::group_by_name(QVector<Object_from_file>& object_vec) {
-    const int obj_size = object_vec.size();
-    std::shared_ptr<QString[]> name_mass(new QString[obj_size], [] (QString *i) {delete[] i;});
-    std::shared_ptr<int[]> num_mass(new int[obj_size], [] (int *i) {delete[] i;});
-
-    //qDebug() << "Seccuse befor for";
-
-    for (int a = 0; a < obj_size; ++a) {
-        name_mass[a] = object_vec[a].get_name().toUpper();              //we use the ToUpper() function so that lowercase letters are not separated from uppercase ones
-        num_mass[a] = a;
-    }
-
-    //qDebug() << "Seccuse befor sort";
-
-    obj_sort(name_mass, num_mass, obj_size);
-
-    //qDebug() << "Seccuse after sort";
+    obj_lock.lock();
+    auto temp_vec = std::make_shared<QVector<Object_from_file>>(object_vec);
+    obj_lock.unlock();
+    // use std::sort and custom reverse comporatare for result
+    std::sort((*temp_vec).begin(), (*temp_vec).end(),
+              [] (const Object_from_file &item1, const Object_from_file &item2) {
+        return (item1.get_name().toUpper() < item2.get_name().toUpper());
+              });
 
     auto output = std::make_unique<QString>("");
     auto A_flag = std::make_unique<bool>(false);
     auto not_A_flag = std::make_unique<bool>(false);
 
-    for (int a = 0; a < obj_size; ++a) {
-        auto name =  std::make_unique<QString>(object_vec[num_mass[a]].get_name());
+    for (int a = 0; a < (*temp_vec).size(); ++a) {
+        auto name =  std::make_unique<QString>((*temp_vec)[a].get_name());
         if ((*name)[0].toUpper() == L'А' && !*A_flag)
             *A_flag = true;
         if ((*name)[0] != L'А' && !*not_A_flag) {
             *output += "#\n";
             *not_A_flag = true;
         }
-        else if ((*name)[0].toUpper() != object_vec[num_mass[a - 1]].get_name()[0].toUpper() && *A_flag)
+        else if ((*name)[0].toUpper() != (*temp_vec)[a - 1].get_name()[0].toUpper() && *A_flag)
             *output += "Буква " + (QString)(*name)[0].toUpper() + "\n";                 //initially I tried to use the alphabet for grouping,
                                                                                     //but then it turned out that Qt practically does not know how to work with the Russian test
                                                                                     //and I had to adapt
 
-        *output += object_vec[num_mass[a]].get_output();
+        *output += (*temp_vec)[a].get_output();
     }
     return *output;
 }
 
 QString Group::group_by_create_time(QVector<Object_from_file>& object_vec) {
-
+    obj_lock.lock();
     auto temp_vec = std::make_shared<QVector<Object_from_file>>(object_vec);
+    obj_lock.unlock();
     // use std::sort and custom reverse comporatare for result
     std::sort((*temp_vec).begin(), (*temp_vec).end(),
               [] (const Object_from_file &item1, const Object_from_file &item2) {
@@ -162,118 +132,71 @@ QString Group::group_by_create_time(QVector<Object_from_file>& object_vec) {
     return *output;
 }
 
-QString Group::group_by_type(QVector<Object_from_file>& object_vec, int num_of) {          //the last function that I was finishing by 4 o'clock in the morning,
-                                                                                    //I wanted to sleep, I couldn't think,
-                                                                                    //but it turned out, not bad, this is the best option that I came up with
-                                                                                    //and, most importantly, IT WORKS HAHAHAHAHAHA, although there is a place to grow
-    const int obj_size = object_vec.size();
-    std::shared_ptr<QString[]> type_mass(new QString[obj_size], [] (QString *i) {delete[] i;});
-    std::shared_ptr<int[]> num_mass(new int[obj_size], [] (int *i) {delete[] i;});
-
-    for (int a = 0; a < obj_size; ++a) {
-        type_mass[a] = object_vec[a].get_type();
-        num_mass[a] = a;
-    }
-
-    obj_sort(type_mass, num_mass, obj_size);
+QString Group::group_by_type(QVector<Object_from_file>& object_vec, int num_of) {
+    obj_lock.lock();
+    auto temp_vec = std::make_shared<QVector<Object_from_file>>(object_vec);
+    obj_lock.unlock();
+    // use std::sort and custom reverse comporatare for result
+    // within groups by type, we need to sort objects by name
+    // so we do in same function
+    std::sort((*temp_vec).begin(), (*temp_vec).end(),
+              [] (const Object_from_file &item1, const Object_from_file &item2) {
+        if (item1.get_type() == item2.get_type())
+            return item1.get_name().toUpper() < item2.get_name().toUpper();
+        return (item1.get_type() < item2.get_type());
+              });
 
     auto output = std::make_unique<QString>("");
+    // objects of groups smaller than the threshold value are placed in a separate group
     auto differents = std::make_unique<std::vector<Object_from_file>>();
-    auto one_type = std::make_unique<std::vector<Object_from_file>>();
     auto type = std::make_unique<QString>();
 
+    // the size of the vector is used many times in the loop
+    //so we put it into a variable once and not calling the size function many times
+    auto obj_size = temp_vec->size();
+
     for (int a = 0; a < obj_size; ) {
+        // actual_num displays how many times an object of the same type occurs.
+        // It is set to 1 because each type being read occurs at least 1 time
         int actual_num = 1;
-        *type = object_vec[num_mass[a]].get_type();
+        *type = (*temp_vec)[a].get_type();
         for (int b = a + 1; b < obj_size; ++b) {
-            if (*type == object_vec[num_mass[b]].get_type()) ++actual_num;
+            if (*type == (*temp_vec)[b].get_type()) ++actual_num;
             else break;
         }
+        // if the size of the variable is greater than the threshold value,
+        // then objects of this type are entered into output,
         if (actual_num >= num_of) {
+            *output += (*temp_vec)[a].get_type() + "\n";
             for (int b = a; b < obj_size; ++b) {
-                if (*type == object_vec[num_mass[b]].get_type()) one_type->push_back(object_vec[num_mass[b]]);
+                if (*type == (*temp_vec)[b].get_type()) {
+                    *output += (*temp_vec)[b].get_output();
+                }
                 else break;
             }
+        //and if smaller, they are entered into the vector for further sorting and output
         }else {
             for (int b = a; b < obj_size; ++b) {
-                if (*type == object_vec[num_mass[b]].get_type()) differents->push_back(object_vec[num_mass[b]]);
+                if (*type == (*temp_vec)[b].get_type()) differents->push_back((*temp_vec)[b]);
                 else break;
             }
         }
+        // increasing the loop variable by the number of objects of the same type
+        // to skip objects of this type in the following iterations
         a += actual_num;
-        if(!one_type->empty()) {
-            *output += (*one_type)[0].get_type() + "\n";
-
-            const int type_mass_size = one_type->size();
-            std::shared_ptr<QString[]> type_mass(new QString[obj_size], [] (QString *i) {delete[] i;});
-            std::shared_ptr<int[]> type_num_mass(new int[obj_size], [] (int *i) {delete[] i;});
-            for (int с = 0; с < type_mass_size; ++с) {
-                type_mass[с] = (*one_type)[с].get_name().toUpper();
-                type_num_mass[с] = с;
-            }
-            obj_sort(type_mass, type_num_mass, type_mass_size);
-
-            for(int b = 0; b < type_mass_size; ++b)
-                *output += (*one_type)[type_num_mass[b]].get_output();
-            one_type->clear();
-        }
     }
+
     if(!differents->empty()){
+        std::sort(differents->begin(), differents->end(),
+                  [] (const Object_from_file &item1, const Object_from_file &item2) {
+                          return item1.get_name().toUpper() < item2.get_name().toUpper();
+                  });
+
         *output += "Разное\n";
-
-        const int diff_mass_size = differents->size();
-        std::shared_ptr<QString[]> diff_mass(new QString[obj_size], [] (QString *i) {delete[] i;});
-        std::shared_ptr<int[]> diff_num_mass(new int[obj_size], [] (int *i) {delete[] i;});
-        for (int a = 0; a < diff_mass_size; ++a) {
-            diff_mass[a] = (*differents)[a].get_name().toUpper();
-            diff_num_mass[a] = a;
-        }
-        obj_sort(diff_mass, diff_num_mass, diff_mass_size);
-
-        for(int a = 0; a < diff_mass_size; ++a ) {
-            *output += (*differents)[diff_num_mass[a]].get_output();
+        for(int a = 0; a < differents->size(); ++a ) {
+            *output += (*differents)[a].get_output();
         }
     }
 
     return *output;
-}
-
-
-template <class X> void obj_sort(std::shared_ptr<X> items, std::shared_ptr<int[]> num_vec, int left, int right) {
-    int i, j, l;
-
-    //the usual creation via
-    //X x, y;
-    //did not work because X in this case is an array.
-    //I had to a little cheat
-    auto x = items[0];
-    auto y = items[0];
-
-    i = left; j = right;
-    x = items[(left + right) / 2];
-
-    do {
-        while ((items[i] < x) && (i < right)) i++;
-        while ((x < items[j]) && (j > left)) j--;
-
-        if (i <= j) {
-            l = num_vec[i];
-            num_vec[i] = num_vec[j];
-            num_vec[j] = l;
-            y = items[i];
-            items[i] = items[j];
-            items[j] = y;
-            i++;
-            j--;
-        }
-    } while (i <= j);
-    if (left < j) obj_sort(items, num_vec, left, j);
-    if (i < right) obj_sort(items, num_vec, i, right);
-
-}
-
-template <class X> void obj_sort(std::shared_ptr<X> items, std::shared_ptr<int[]> num_vec, int size) {            //I would say that I made such a function so as not to repeat one line several times,
-                                                                                            //but, in fact, I just had QuickSort written in this form for a long time
-                                                                                            //and I just copied and modified it for current needs
-    obj_sort(items, num_vec, 0, size - 1);
 }

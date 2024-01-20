@@ -17,8 +17,9 @@ void Thread_class::makeThread(QVector<Object_from_file>* file_objects, QString t
     connect(pool, &Processes_pool::process_finished, [this] (QString text) {
         //qDebug() << "Seccuse";
         emit output(text);
+        qDebug() << "over " << QThreadPool::globalInstance()->activeThreadCount();
     });
 
     QThreadPool::globalInstance()->start(pool);
-    //qDebug() << QThreadPool::globalInstance()->activeThreadCount();
+    qDebug() << QThreadPool::globalInstance()->activeThreadCount();
 }

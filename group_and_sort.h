@@ -3,6 +3,7 @@
 
 #include <QDateTime>
 #include "object_from_file.h"
+#include <mutex>
 
 class Group : public QObject {
     Q_OBJECT
@@ -21,11 +22,5 @@ public:
 signals:
     void done(QString);
 };
-
-template <class X> void obj_sort(std::shared_ptr<X> items, std::shared_ptr<int[]> num_vec, int size);
-
-template <class X> void obj_sort(std::shared_ptr<X> items, std::shared_ptr<int[]> num_vec, int left, int right);
-
-bool revers_comparator (const Object_from_file &item1, const Object_from_file &item2);
 
 #endif // GROUP_AND_SORT_H

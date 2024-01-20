@@ -27,9 +27,9 @@ public:
 
     friend Group;
 
-    template <class X> friend void obj_sort(X* items, int* num_vec, int size);
+    //template <class X> friend void obj_sort(X* items, int* num_vec, int size);
 
-    template <class X> friend void obj_sort(X* items, int* num_vec, int left, int right);
+    //template <class X> friend void obj_sort(X* items, int* num_vec, int left, int right);
 
 private slots:
     void on_read_button_clicked();
